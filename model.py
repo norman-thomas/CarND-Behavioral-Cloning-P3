@@ -14,6 +14,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
 
 CROP_TOP, CROP_BOTTOM = 60, 26
+CHANNELS = 1
 
 # exponential moving average
 def ema(input_i, size):
@@ -26,43 +27,27 @@ def ema(input_i, size):
     return np.dot(values, weights) / weights.sum()
 
 
-def nvidia_model(input_shape):
+def my_model(input_shape):
     model = Sequential()
-    #model.add(Cropping2D(((60, 25), (0, 0)), input_shape=input_shape))
-    #model.add(Lambda(preprocess))
-    #model.add(Lambda(lambda x: (x - 128) / 255))
 
     model.add(Conv2D(24, (3, 3), input_shape=input_shape))
     model.add(Activation('elu'))
 
-    #model.add(Conv2D(36, (5, 5)))
-    #model.add(Activation('elu'))
-
-    #model.add(Conv2D(48, (5, 5)))
-    #model.add(Activation('elu'))
-
-    #model.add(Conv2D(64, (3, 3)))
-    #model.add(Activation('elu'))
-
-    #model.add(Conv2D(64, (3, 3)))
-    #model.add(Activation('elu'))
+    model.add(Conv2D(48, (3, 3)))
+    model.add(Activation('elu'))
 
     model.add(Flatten())
     model.add(Dropout(0.5))
 
-    #model.add(Dense(1164))
-    #model.add(Activation('elu'))
-    #model.add(Dropout(0.5))
-
-    model.add(Dense(100))
+    model.add(Dense(128))
     model.add(Activation('elu'))
     model.add(Dropout(0.5))
 
-    model.add(Dense(50))
+    model.add(Dense(64))
     model.add(Activation('elu'))
     model.add(Dropout(0.5))
 
-    model.add(Dense(10))
+    model.add(Dense(16))
     model.add(Activation('elu'))
 
     model.add(Dense(1))
@@ -76,7 +61,7 @@ def nvidia_model(input_shape):
 
 def train(model, x, y, batch_size=32, epochs=5):
     X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.3)
-    steps_per_epoch = 50 #len(y_train) // batch_size
+    steps_per_epoch = 100 #len(y_train) // batch_size
     print('Training set size:', len(y_train))
     print('Epochs:', epochs)
     print('Steps per epoch:', steps_per_epoch)
@@ -89,8 +74,10 @@ def train(model, x, y, batch_size=32, epochs=5):
 
 def load_image(path):
     img = cv2.imread(path)
-    return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    #return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    if CHANNELS == 1:
+        return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    else:
+        return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 def preprocess(img):
     grayscale = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
@@ -110,7 +97,7 @@ def generator(x, y, batch_size=32):
 
             height = (160 - CROP_TOP - CROP_BOTTOM) // 2
             width = 160
-            images = np.zeros((batch_size, height, width, 3))
+            images = np.zeros((batch_size, height, width, CHANNELS))
             steerings = np.zeros((batch_size, 1))
             for i, (filename, steering) in enumerate(zip(batch_x, batch_y)):
                 img = load_image(filename)
@@ -118,7 +105,7 @@ def generator(x, y, batch_size=32):
                 h, w = img.shape[:2]
                 img = cv2.resize(img, (w//2, h//2), interpolation=cv2.INTER_CUBIC)
                 img = ((img / 255) - 0.5).astype(np.float16)
-                images[i] = img #.reshape((height, width, 1))
+                images[i] = img if CHANNELS > 1 else img.reshape((height, width, 1))
                 steerings[i] = steering
             yield shuffle(np.array(images), np.array(steerings))
 
@@ -158,7 +145,8 @@ if __name__ == '__main__':
     args = parse_args()
     data = read_csv(os.path.join(args.image_folder, 'driving_log.csv'))
     data['image'] = data['image'].map(lambda s: os.path.join(args.image_folder, 'IMG', s.split('/')[-1]))
-    model = nvidia_model((80-30-13,160,3))
-    #print(model.summary())
-    train(model, data['image'], data['steering'], batch_size=2)
+    model = my_model((80-30-13, 160, CHANNELS))
+    print(model.summary())
+    train(model, data['image'], data['steering'], batch_size=32)
+    model.save(args.model)
 
