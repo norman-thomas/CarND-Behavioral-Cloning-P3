@@ -120,7 +120,6 @@ def augment(image, steering):
 
 def generator(x, y, batch_size=32):
     size = len(y)
-    height, width = 160, 320
     while True:
         shuffle(x, y)
         for offset in range(0, size, batch_size):
@@ -184,6 +183,8 @@ if __name__ == '__main__':
 
     model = create_model(input_shape, nvidia_model)
     print(model.summary())
+
     train(model, data['image'], data['steering'], batch_size=64, epochs=5)
+
     model.save(args.model)
 
