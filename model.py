@@ -32,10 +32,11 @@ def create_model(input_shape, model_creator):
     return model
 
 def my_model(model):
-    mode.add(Conv2D(24, (5, 5), strides=(2, 2), padding='valid', activation='elu'))
-    mode.add(Conv2D(32, (3, 3), padding='valid', activation='elu'))
-    mode.add(Conv2D(48, (3, 3), padding='valid', activation='elu'))
-    mode.add(Conv2D(64, (3, 3), padding='valid', activation='elu'))
+    model.add(Conv2D(32, (8, 8), strides=(4, 4), padding='valid', activation='elu'))
+    model.add(Conv2D(48, (5, 5), strides=(2, 2), padding='valid', activation='elu'))
+    model.add(Conv2D(64, (3, 3), padding='valid', activation='elu'))
+    model.add(Conv2D(96, (3, 3), padding='valid', activation='elu'))
+    model.add(Conv2D(96, (3, 3), padding='valid', activation='elu'))
     model.add(Flatten())
     model.add(Dropout(0.5))
     model.add(Dense(256, activation='elu'))
@@ -111,10 +112,10 @@ def augment(image, steering):
     add(image, steering)
     add(adjust_brightness(image, factor), steering)
     add(adjust_brightness(image, -factor), steering)
-    if abs(steering) > 0.1:
-        add(*flip(image, steering))
-        add(*flip(adjust_brightness(image, factor), steering))
-        add(*flip(adjust_brightness(image, -factor), steering))
+
+    add(*flip(image, steering))
+    add(*flip(adjust_brightness(image, factor), steering))
+    add(*flip(adjust_brightness(image, -factor), steering))
 
     return images, steerings
 
@@ -181,7 +182,7 @@ if __name__ == '__main__':
     data = fix_image_paths(data, os.path.join(args.image_folder, 'IMG'))
     input_shape = detect_input_shape(data)
 
-    model = create_model(input_shape, nvidia_model)
+    model = create_model(input_shape, my_model)
     print(model.summary())
 
     train(model, data['image'], data['steering'], batch_size=64, epochs=5)
