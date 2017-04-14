@@ -69,7 +69,7 @@ def nvidia_model(model):
 
 def train(model, data, batch_size=32, epochs=5):
     data_train, data_test = train_test_split(data, test_size=0.3)
-    steps_per_epoch = len(data_train)
+    steps_per_epoch = len(data_train) // batch_size
     print('Training set size:', len(data_train))
     print('Epochs:', epochs)
     print('Steps per epoch:', steps_per_epoch)
@@ -193,7 +193,7 @@ if __name__ == '__main__':
     model = create_model(input_shape, my_model)
     print(model.summary())
 
-    train(model, data, batch_size=64, epochs=5)
+    train(model, data, batch_size=64, epochs=4)
 
     model.save(args.model)
 
