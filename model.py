@@ -67,14 +67,14 @@ def nvidia_model(model):
     model.add(Dense(1, trainable=False))
 
 
-def train(model, x, y, batch_size=32, epochs=5):
-    X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.3)
-    steps_per_epoch = len(y_train) // batch_size
-    print('Training set size:', len(y_train))
+def train(model, data, batch_size=32, epochs=5):
+    data_train, data_test = train_test_split(data, test_size=0.3)
+    steps_per_epoch = len(data_train)
+    print('Training set size:', len(data_train))
     print('Epochs:', epochs)
     print('Steps per epoch:', steps_per_epoch)
     model.fit_generator(
-        generator(X_train, y_train, batch_size),
+        generator(data_train, batch_size),
         steps_per_epoch,
         epochs=epochs
     )
@@ -90,9 +90,10 @@ def preprocess_with_canny(img):
     high_threshold = 150
     return cv2.Canny(blurred, low_threshold, high_threshold)
 
-def adjust_brightness(img, factor):
+def adjust_brightness(img_steering, factor):
+    img, steering = img_steering
     result = img * (1 + factor)
-    return normalize(result)
+    return normalize(result), steering
 
 def flip(img, steering):
     return np.fliplr(img), -steering
@@ -100,7 +101,11 @@ def flip(img, steering):
 def normalize(img):
     return (img - img.mean()) / (img.max() - img.min())
 
-def augment(image, steering):
+def get_side_image(left: bool, image, center_steering, steering_correction=0.2):
+    steering = (center_steering + steering_correction) if left else (center_steering - steering_correction)
+    return image, steering
+
+def augment(row, center_steering):
     images = []
     steerings = []
 
@@ -109,53 +114,56 @@ def augment(image, steering):
         steerings.append(s)
 
     factor = random.uniform(0.1, 0.4)
-    add(image, steering)
-    add(adjust_brightness(image, factor), steering)
-    add(adjust_brightness(image, -factor), steering)
 
-    add(*flip(image, steering))
-    add(*flip(adjust_brightness(image, factor), steering))
-    add(*flip(adjust_brightness(image, -factor), steering))
+    center = load_image(row['center'])
+
+    left, left_steering = get_side_image(True, load_image(row['left']), center_steering)
+    right, right_steering = get_side_image(True, load_image(row['right']), center_steering)
+
+    for image, steering in ((center, center_steering), (left, left_steering), (right, right_steering)):
+        add(image, steering)
+        add(*adjust_brightness((image, steering), factor))
+        add(*adjust_brightness((image, steering), -factor))
+
+    add(*flip(center, center_steering))
+    add(*flip(*adjust_brightness((center, center_steering), factor)))
+    add(*flip(*adjust_brightness((center, center_steering), -factor)))
 
     return images, steerings
 
-def generator(x, y, batch_size=32):
-    size = len(y)
+def generator(data, batch_size=32):
+    size = len(data)
     while True:
-        shuffle(x, y)
+        shuffle(data)
         for offset in range(0, size, batch_size):
-            batch_x = x[offset:offset+batch_size]
-            batch_y = y[offset:offset+batch_size]
+            batch = data.iloc[offset:offset+batch_size]
 
             images = []
             steerings = []
-            for i, (filename, steering) in enumerate(zip(batch_x, batch_y)):
-                imgs, steers = augment(load_image(filename), steering)
+            for i in range(len(batch)):
+                row = batch.iloc[i]
+                steering = row['steering']
+                imgs, steers = augment(row, steering)
                 for img, steer in zip(imgs, steers):
                     images.append(img)
                     steerings.append(steer)
             yield shuffle(np.array(images), np.array(steerings))
 
-def read_csv(filename, steering_adjustment=0.2):
+def read_csv(filename):
     columns = ( 'center', 'left', 'right', 'steering', 'throttle', 'brake', 'speed' )
     df = pd.read_csv(filename, skipinitialspace=True)
     df.columns = columns
 
-    df['steering_left'] = df['steering'] + steering_adjustment
-    df['steering_right'] = df['steering'] - steering_adjustment
-
-    result_columns = ('image', 'steering')
-    center = df[['center', 'steering']].as_matrix()
-    left = df[['left', 'steering_left']].as_matrix()
-    right = df[['right', 'steering_right']].as_matrix()
-    return pd.DataFrame(data=np.concatenate((center, left, right)), columns=result_columns)
+    return df
 
 def fix_image_paths(df, folder):
-    df['image'] = df['image'].map(lambda s: os.path.join(folder, s.split('/')[-1]))
+    df['center'] = df['center'].map(lambda s: os.path.join(folder, s.split('/')[-1]))
+    df['left'] = df['left'].map(lambda s: os.path.join(folder, s.split('/')[-1]))
+    df['right'] = df['right'].map(lambda s: os.path.join(folder, s.split('/')[-1]))
     return df
 
 def detect_input_shape(df):
-    sample_image = df['image'].loc[1]
+    sample_image = df['center'].loc[1]
     return load_image(sample_image).shape
 
 def parse_args():
@@ -178,14 +186,14 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
 
-    data = read_csv(os.path.join(args.image_folder, 'driving_log.csv'), steering_adjustment=0.2)
+    data = read_csv(os.path.join(args.image_folder, 'driving_log.csv'))
     data = fix_image_paths(data, os.path.join(args.image_folder, 'IMG'))
     input_shape = detect_input_shape(data)
 
     model = create_model(input_shape, my_model)
     print(model.summary())
 
-    train(model, data['image'], data['steering'], batch_size=64, epochs=5)
+    train(model, data, batch_size=64, epochs=5)
 
     model.save(args.model)
 
