@@ -97,7 +97,9 @@ def train(model, data, batch_size=32, epochs=5):
     model.fit_generator(
         generator(data_train, batch_size),
         steps_per_epoch,
-        epochs=epochs
+        epochs=epochs,
+        validation_data=generator(data_test, batch_size),
+        validation_steps=(len(data_test) // batch_size)
     )
 
 def preprocess_with_canny(img):
@@ -158,7 +160,7 @@ if __name__ == '__main__':
     model = create_model(input_shape, my_fast_model)
     model.summary()
 
-    train(model, data, batch_size=32, epochs=2)
+    train(model, data, batch_size=32, epochs=4)
 
     model.save(args.model)
 
