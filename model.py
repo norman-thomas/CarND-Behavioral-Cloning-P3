@@ -148,7 +148,7 @@ if __name__ == '__main__':
     model = create_model(input_shape, my_fast_model)
     model.summary()
 
-    train(model, data, batch_size=32, epochs=4)
+    train(model, data, batch_size=32, epochs=3)
 
     model.save(args.model)
 
