@@ -51,18 +51,6 @@ def my_fast_model(model):
     model.add(Dense(16, activation='elu'))
     model.add(Dense(1))
 
-def my_model(model):
-    model.add(Conv2D(32, (8, 8), strides=(4, 4), padding='valid', activation='elu'))
-    model.add(Conv2D(48, (5, 5), strides=(2, 2), padding='valid', activation='elu'))
-    model.add(Conv2D(64, (3, 3), padding='valid', activation='elu'))
-    model.add(Conv2D(64, (3, 3), padding='valid', activation='elu'))
-    model.add(Flatten())
-    model.add(Dropout(0.3))
-    model.add(Dense(256, activation='elu'))
-    model.add(Dense(64, activation='elu'))
-    model.add(Dense(16, activation='elu'))
-    model.add(Dense(1))
-
 def nvidia_model(model):
     model.add(Conv2D(24, (5, 5), strides=(2, 2), padding='valid', activation='elu'))
     model.add(Conv2D(36, (5, 5), strides=(2, 2), padding='valid', activation='elu'))
