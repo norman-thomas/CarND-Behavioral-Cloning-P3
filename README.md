@@ -12,8 +12,14 @@ The goals / steps of this project are the following:
 
 [//]: # (Image References)
 
-[image1]: ./examples/placeholder.png "Model Visualization"
-[image2]: ./examples/placeholder.png "Grayscaling"
+[steering_histogram]: ./model/output_5_1.png "Histogram of steering angles"
+[sample_images]: ./model/output_11_1.png "Original sample images"
+[sample_images_cropped]: ./model/output_12_1.png "Cropped sample images"
+[sample_images_bright]: ./model/output_19_0.png "Brightened sample images"
+[sample_images_dark]: ./model/output_20_0.png "Darkened sample images"
+[sample_images_noise]: ./model/output_21_0.png "Noise sample images"
+[sample_images_flipped]: ./model/output_22_0.png "Flipped sample images"
+
 
 # Rubric Points
 
@@ -35,7 +41,7 @@ My project includes the following files:
 | `model.h5` | containing a trained convolution neural network |
 | `drive.py` | for driving the car in autonomous mode |
 | `video.mp4` | video recording of autonomous mode using my model `model.h5` on track 1 |
-| `README.md` | bla |
+| `README.md` | project writeup |
 
 While developing and training I used Python 3.5.2 with Keras 2.0.2 and TensorFlow 1.0.1.
 
@@ -55,13 +61,77 @@ The `model.py` file contains the code for training and saving the convolution ne
 
 ### 1. Collection
 
-Due to a lack of confidence in my car simulator driving skills, which are based on experience with 3D racing games, I immediately opted for the training data provided by Udacity.
+Due to a lack of confidence in my car simulator driving skills, which are based on experience with 3D racing games, I immediately opted for the training data provided by Udacity. Later on, I decided to practise my simulator driving skills and record some more data to extend the provided data set with some curvy driving and also with recovery driving.
 
 ### 2. Analysis
 
+A first look at the data provided by Udacity reveals that in includes by far more straight-ahead driving (steering angle around 0.0) than left/right steering. That's when I decided to collect my own data additionally, as track 1 does not have that many straight sections. I drove on track 1 in both directions.
 
+After adding my own recordings, the data now looks as follows:
+
+| steering direction | count |
+| --- | --- |
+| **left** (angle < 0) | 3883 |
+| **right** (angle > 0) | 3740 |
+| **straight** (angle = 0) | 4420 |
+
+There are 12,043 data points in total.
+
+Here's a histogram of steering angles including both my own and Udacity's training data:
+
+![Histogram of steering angles][steering_histogram]
+
+There's still disproportionately more data for driving straight-ahead.
+
+The input images have the size `160 x 320 x 3`. Here are 4 sample images:
+
+![Original sample iamges][sample_images]
 
 ### 3. Preprocessing
+
+#### Data Augmentation
+
+Due to the high amount of data with `steering = 0` I decided to randomly drop that data from the training data. Additionally, in order to increase the overall amount of training data and make the model more robust and generalized, I decided the augment the data in several ways:
+
+1. **change brightness** of input image
+   * this helps the model generalize beyond brightness/darkness of a scene
+2. **add random noise** to input image
+   * this helps generate non-identical training images for the same steering angle
+3. **flip** input image of center camera
+   * this helps increase the amount of training data for left/right steering
+
+Flipping is additionally applied to brightnened/darkened images as well as images with added noise.
+
+Here are the various augmentations applied to the above sample images:
+
+
+##### Brightened
+
+![Brightened sample iamges][sample_images_bright]
+
+##### Darkened
+
+![Darkened sample iamges][sample_images_dark]
+
+##### Added Noise
+
+![Noise sample iamges][sample_images_noise]
+
+##### Flipped
+
+![Flipped sample iamges][sample_images_flipped]
+
+#### Actual Preprocessing
+
+I decided to pass the images into the model in HSV color space as this not only simplifies modification of brightness but also, to me, seems like a more 'semantic' format.
+
+Besides transformation into HSV, all further preprocessing is done within the model.
+
+The first layer of the model crops the image, thereby removing the part of the image above the horizon (i.e. sky) and the lower part including the hood of the car. I remove both because the hood is a constant, never changing part of the image, which provides no additional valueable information. For the same reason I also crop the sky as it keeps changing, but obviously does not determine the steering angle. Cropping also reduces the input size of the model, therefore reducing it's number of parameters and computation needed for training.
+
+The second layer normalizes the input image of dimension `74 x 320 x 3` from integer values ranging between `0` and `255` to floating point values between `-0.5` up to `0.5`.
+
+
 
 ## Model Architecture and Training Strategy
 
@@ -111,7 +181,7 @@ The final model architecture (model.py lines 18-24) consisted of a convolution n
 
 Here is a visualization of the architecture (note: visualizing the architecture is optional according to the project rubric)
 
-![alt text][image1]
+![alt text][steering_histogram]
 
 ### 3. Creation of the Training Set & Training Process
 
