@@ -2,6 +2,7 @@ import random
 import numpy as np
 from .data import load_image
 
+# change brightness of image by amount
 def adjust_brightness(img_steering, amount):
     img, steering = img_steering
     result = img.copy().astype(np.int16)
@@ -9,6 +10,7 @@ def adjust_brightness(img_steering, amount):
     result = np.clip(result, 0, 255).astype(np.uint8)
     return result, steering
 
+# add random noise to an image with noise values ranging from 0 to maximum
 def add_noise(img_steering, maximum=10):
     img, steering = img_steering
     noise = np.random.randint(0, high=maximum, size=img.shape)
@@ -16,16 +18,17 @@ def add_noise(img_steering, maximum=10):
     result = np.clip(np.rint(result + noise), 0, 255).astype(np.uint8)
     return result, steering
 
+# flip image hirozontally
 def flip(img, steering):
     return np.fliplr(img.copy()), -steering
 
-def normalize(img):
-    return (img - img.mean()) / (img.max() - img.min())
-
+# calculate steering for left/right camera images
 def get_side_image(left: bool, image, center_steering, steering_correction=0.25):
     steering = (center_steering + steering_correction) if left else (center_steering - steering_correction)
     return image, steering
 
+# augment data by using left/right images and adding noise, changing brightness of center/left/right images
+# and flipping center images
 def augment(row, center_steering, threshold=0.05, droprate=0.7):
     images = []
     steerings = []

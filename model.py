@@ -21,6 +21,9 @@ from helpers.augment import augment
 CROP_TOP, CROP_BOTTOM = 60, 26 #70, 24
 random.seed()
 
+
+# This function helps easily creating different models and contains the parts of the model
+# that don't change, i.e. preprocessing and compiling
 def create_model(input_shape, model_creator):
     model = Sequential()
 
@@ -37,6 +40,7 @@ def create_model(input_shape, model_creator):
     )
     return model
 
+# My own model, which I designed for fast training and lower memory impact
 def my_fast_model(model):
     model.add(Conv2D(12, (8, 8), strides=(2, 2), padding='valid', activation='elu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
@@ -51,6 +55,7 @@ def my_fast_model(model):
     model.add(Dense(16, activation='elu'))
     model.add(Dense(1))
 
+# The NVidia model
 def nvidia_model(model):
     model.add(Conv2D(24, (5, 5), strides=(2, 2), padding='valid', activation='elu'))
     model.add(Conv2D(36, (5, 5), strides=(2, 2), padding='valid', activation='elu'))
@@ -73,9 +78,12 @@ def nvidia_model(model):
     model.add(Dense(10, activation='elu'))
     model.add(Dense(1))
 
+# Function to resize images within the model
+# as the NVidia model was designed with 66x200x3 images in mind
 def resize(img):
     return ktf.image.resize_images(img, (66, 200))
 
+# Train the model using a generator in order to save memory
 def train(model, data, batch_size=32, epochs=5):
     data_train, data_test = train_test_split(data, test_size=0.2)
     steps_per_epoch = len(data_train) // batch_size
@@ -90,13 +98,8 @@ def train(model, data, batch_size=32, epochs=5):
         validation_steps=(len(data_test) // batch_size)
     )
 
-def preprocess_with_canny(img):
-    grayscale = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-    blurred = cv2.GaussianBlur(grayscale, (3, 3), 0)
-    low_threshold = 50
-    high_threshold = 150
-    return cv2.Canny(blurred, low_threshold, high_threshold)
-
+# Generator, which feeds training and validation data to the model
+# the generator also augments the data
 def generator(data, batch_size=32):
     size = len(data)
     while True:
@@ -109,8 +112,8 @@ def generator(data, batch_size=32):
             for i in range(len(batch)):
                 row = batch.iloc[i]
                 steering = row['steering']
-                imgs, steers = augment(row, steering, threshold=0.05, droprate=0.8)
-                #imgs, steers = augment(row, steering, threshold=0.0, droprate=0.0)
+                imgs, steers = augment(row, steering, threshold=0.05, droprate=0.8) # when including Udacity's data
+                #imgs, steers = augment(row, steering, threshold=0.0, droprate=0.0) # when exclusively using my own data
                 for img, steer in zip(imgs, steers):
                     images.append(img) #cv2.resize(img, (200, 66), interpolation=cv2.INTER_CUBIC))
                     steerings.append(steer)
