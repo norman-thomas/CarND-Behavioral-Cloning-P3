@@ -18,7 +18,7 @@ def add_noise(img_steering, maximum=10):
     result = np.clip(np.rint(result + noise), 0, 255).astype(np.uint8)
     return result, steering
 
-# flip image hirozontally
+# flip image horizontally
 def flip(img, steering):
     return np.fliplr(img.copy()), -steering
 
