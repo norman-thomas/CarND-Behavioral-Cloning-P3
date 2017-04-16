@@ -66,9 +66,6 @@ def nvidia_model(model):
     model.add(Flatten())
     model.add(Dropout(0.5))
 
-    model.add(Dense(1164, activation='elu'))
-    model.add(Dropout(0.5))
-
     model.add(Dense(100, activation='elu'))
     model.add(Dropout(0.2))
 
