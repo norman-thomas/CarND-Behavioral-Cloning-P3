@@ -49,7 +49,7 @@ def my_fast_model(model):
     model.add(Conv2D(32, (3, 3), padding='valid', activation='elu'))
     model.add(Conv2D(32, (3, 3), padding='valid', activation='elu'))
     model.add(Flatten())
-    model.add(Dropout(0.3))
+    model.add(Dropout(0.6))
     model.add(Dense(256, activation='elu'))
     model.add(Dense(64, activation='elu'))
     model.add(Dense(16, activation='elu'))
