@@ -140,7 +140,7 @@ The second layer normalizes the input image of dimension `74 x 320 x 3` from int
 
 ### 0. Model choices
 
-Having learned about some existing neural network architectures in previous lessons, I wanted to give the NVidia model a try. All of my training was done on my personal laptop, which has an NVidia GPU with 2GB of RAM. This, however, turned out to be a bottleneck when a model grew too big. Training the NVidia was doable, albeit quite slow and memory hungry. I then thought that using the NVidia model was a bit of an overkill for this task and tried to come up with a smaller, hence faster model. I will compare the performance of the NVidia and my model below.
+Having learned about some existing neural network architectures in previous lessons, I wanted to give the NVidia model a try. All of my training was done on my personal laptop, which has an NVidia GPU with 2GB of RAM. This, however, turned out to be a bottleneck when a model grew too big. Training the NVidia was doable, albeit quite slow and memory hungry. I then thought that the NVidia model was too potent for this task and tried to come up with a smaller, hence faster model.
 
 ### 1. An appropriate model architecture has been employed
 
@@ -187,7 +187,7 @@ Non-trainable params: 0.0
 _________________________________________________________________
 ```
 
-In total there around about `306,693` trainable params. This is considerably less than the NVidia model, which had `5,171,319` trainable params, which results is much higher memory consumption and more computation needed to train the model. Consequentially, the NVidia model requires more training data. Even with the smaller `66 x 200 x 3` input size the NVidia model assumes, Keras reports `Trainable params: 1,595,511.0`.
+In total there around about `306,693` trainable params. This is considerably less than the NVidia model, which had `559,419` trainable params, which results in higher memory consumption and more computation needed to train the model. Consequentially, the NVidia model requires more training data. With the smaller `66 x 200 x 3` input size the NVidia model assumes, Keras reports `Trainable params: 252,219.0`.
 
 ### 2. Attempts to reduce overfitting in the model
 
