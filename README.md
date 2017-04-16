@@ -20,6 +20,10 @@ The goals / steps of this project are the following:
 [sample_images_noise]: ./model/output_21_0.png "Noise sample images"
 [sample_images_flipped]: ./model/output_22_0.png "Flipped sample images"
 
+[recovery_1]: ./examples/recovery_1.jpg "Recovery from right"
+[recovery_2]: ./examples/recovery_2.jpg "Recovery from right"
+[recovery_3]: ./examples/recovery_3.jpg "Recovery from right"
+
 [nvidia_model]: https://devblogs.nvidia.com/parallelforall/wp-content/uploads/2016/08/cnn-architecture.png "NVidia Model"
 
 # Rubric Points
@@ -132,8 +136,6 @@ The first layer of the model crops the image, thereby removing the part of the i
 
 The second layer normalizes the input image of dimension `74 x 320 x 3` from integer values ranging between `0` and `255` to floating point values between `-0.5` up to `0.5` ([model.py, lines 32](model.py#32)).
 
-
-
 ## Model Architecture and Training Strategy
 
 ### 0. Model choices
@@ -217,49 +219,67 @@ I took the NVidia model and tried to reduce its size / number of trainable param
 
 The NVidia model takes `66 x 200 x 3` input images. this differs from what the simulator provides. Even after cropping, the remaining image still has `74 x 320 x 3` pixels. I tried to resize/scale the input within a Keras Lambda layer, but gave up that idea as the results were not as good as with the full size input. Similarly to the NVidia model, my model starts with a large convolutional layer. Instead of `5 x 5` I decided to use an `8 x 8` kernel in the first convolution due to the larger input image size. Before reaching the fully connected layers, my model's internal data passed to the fully connected layer has the dimension `1 x 31 x 32` (= 992), which is a roughly comparable amount of information the NVidia model retains with a dimension of `1 x 18 x 64` (= 1152).
 
-In order to gauge how well the model was working, I split my image and steering angle data into a training and validation set.
+In order to gauge how well the model was working, I split my image and steering angle data into a training and validation set. I found that most of the time my first model had a low mean squared error on the training set and an even lower mean squared error on the validation set. What was irritating for me was that the accuracy measure provided by Keras was nowhere near where I had expected it. I therefore spent a lot of time trying to debug a problem that wasn't even there. From the start I had hope to achieve an accuracy of above 0.8, even above 0.5 would've been encouraging. Most of my trained models were usually in the 10-27% range, which was confusing. I then tried running them in the simulator and found out that even seemingly low accuracies yielded and acceptable autonomous driving result. Even a ridiculously low accuracy below 1% yielded a safe center-of-lane driving for most of track 1, although eventually going off road at a later stage. The best model I trained had a MSE of below 0.1.
 
-I found that most of the time my first model had a low mean squared error on the training set and an even lower mean squared error on the validation set. What was irritating for me was that the accuracy measure provided by Keras was nowhere near where I had expected it. I therefore spent a lot of time trying to debug a problem that wasn't even there. From the start I had hope to achieve an accuracy of above 0.8, even above 0.5 would've been encouraging. Most of my trained models were usually in the 10-27% range, which was confusing. I then tried running them in the simulator and found out that even seemingly low accuracies yielded and acceptable autonomous driving result. Even a ridiculously low accuracy below 1% yielded a safe center-of-lane driving for most of track 1, although eventually going off road at a later stage. The best model I trained had a MSE of below 0.1.
+At first I focussed mostly on the model architecture but soon realized that the driving data from Udacity was strongly biased towards straight-ahead driving. As a symptom, early simulator runs often resulted in only very reluctant and low steering angles with the car driving off track at the first bend of the road. I managed to fix that by comparatively reducing the amount of straight-ahead driving in the training data. I drop straight-ahead steering data points with a probability of 80%, i.e. keep only 20%. In order to generate more training data overall, after dropping some of the straight driving, I augment the images by flipping, changing brightness and adding pixel noise. That resulted in the model being more 'confident' in bends and steering appropriately.
 
-To combat the overfitting, I modified the model so that ...
-
-Then I ... 
-
-The final step was to run the simulator to see how well the car was driving around track one. There were a few spots where the vehicle fell off the track... to improve the driving behavior in these cases, I ....
-
-At the end of the process, the vehicle is able to drive autonomously around the track without leaving the road.
+At the end of the process, the vehicle is able to drive autonomously around the track 1 without leaving the road. Sadly, my model constantly fails on the narrow leftward bend atop of the first hill after driving surprisingly well. I plan on working to improve the model's track 2 performance as well.
 
 ### 2. Final Model Architecture
 
-The final model architecture (model.py lines 18-24) consisted of a convolution neural network with the following layers and layer sizes ...
+The final model architecture (see [model.py, lines 44-56](model.py#44)) consists of a convolution neural network with the following layers and layer sizes:
 
-Here is a visualization of the architecture (note: visualizing the architecture is optional according to the project rubric)
+| Layer | Description | Input Shape | Output Shape |
+| ---   | ---         | ---         | --- |
+| Cropping | crops the sky and car's hood | 160 x 320 x 3 | 74 x 320 x 3 |
+| Normalization | normalizes the input values to a range of `-0.5` to `+0.5` | 74 x 320 x 3| 74 x 320 x 3 |
+| Convolution | convolutional layer with kernel size `8x8` and strides `2x2` | 74 x 320 x 3 | 34 x 157 x 12 |
+| Activation | ELU activation layer | 34 x 157 x 12 | 34 x 157 x 12 |
+| Max Pooling | max pooling layer with pool size `2x2` | 34 x 157 x 12 | 17 x 78 x 12 |
+| Convolution | convolutional layer with kernel size `5x5` with strides `2x2` | 17 x 78 x 12 | 7 x 37 x 24 |
+| Activation | ELU activation layer | 7 x 37 x 24 | 7 x 37 x 24 |
+| Convolution | convolutional layer with kernel size `3x3` with strides `1x1` | 7 x 37 x 24 | 5 x 35 x 32 |
+| Activation | ELU activation layer | 5 x 35 x 32 | 5 x 35 x 32 |
+| Convolution | convolutional layer with kernel size `3x3` with strides `1x1` | 5 x 35 x 32 | 3 x 33 x 32 |
+| Activation | ELU activation layer | 3 x 33 x 32 | 3 x 33 x 32 |
+| Convolution | convolutional layer with kernel size `3x3` with strides `1x1` | 3 x 33 x 32 | 1 x 31 x 32 |
+| Activation | ELU activation layer | 1 x 31 x 32 | 1 x 31 x 32 |
+| Flatten | flattening layer | 1 x 31 x 32 | 1 x 992 |
+| Dropout | dropout layer with drop rate `0.6` | 1 x 992 | 1 x 992 |
+| Fully Connected | fully connected layer | 1 x 992 | 1 x 256 |
+| Activation | ELU activation layer | 1 x 256 | 1 x 256 |
+| Fully Connected | fully connected layer | 1 x 256 | 1 x 64 |
+| Activation | ELU activation layer | 1 x 64 | 1 x 64 |
+| Fully Connected | fully connected layer | 1 x 64 | 1 x 16 |
+| Activation | ELU activation layer | 1 x 16 | 1 x 16 |
+| Output | output layer | 1 x 16 | 1 x 1 |
 
-![alt text][steering_histogram]
 
 ### 3. Creation of the Training Set & Training Process
 
-To capture good driving behavior, I first recorded two laps on track one using center lane driving. Here is an example image of center lane driving:
+To capture good driving behavior, I first recorded two laps on track 1 using center lane driving. Here is an example image of center lane driving:
 
-![alt text][image2]
+![Center lane driving][sample_images]
 
-I then recorded the vehicle recovering from the left side and right sides of the road back to center so that the vehicle would learn to .... These images show what a recovery looks like starting from ... :
+I then recorded the vehicle recovering from the left side and right side of the road back to center so that the vehicle would learn how to get back to the center of the road. These images show what a recovery looks like:
 
-![alt text][image3]
-![alt text][image4]
-![alt text][image5]
+The car starts off at the right border of the road:
+![Recovery from right: start][recovery_1]
 
-Then I repeated this process on track two in order to get more data points.
+It then progresses towards the middle of the road:
+![Recovery from right: middle][recovery_2]
 
-To augment the data sat, I also flipped images and angles thinking that this would ... For example, here is an image that has then been flipped:
+Until the center is finally reached and preserved:
+![Recovery from right: end][recovery_3]
 
-![alt text][image6]
-![alt text][image7]
+In order to challenge myself, I did not record any data on the second track. Considering how my model currently performs on track 2, I plan on improving that and plan to record data from track 2 as well.
 
-Etc ....
+To augment the data set, I also flipped images and angles thinking that this would increase the number of curve driving data to learn from. For example, here is an image that has then been flipped:
 
-After the collection process, I had X number of data points. I then preprocessed this data by ...
+![Flipped sample images][sample_images_flipped]
 
-I finally randomly shuffled the data set and put Y% of the data into a validation set. 
+More details about the data augmentation I applied and more sample images can be seen [above](#data-augmentation).
 
-I used this training data for training the model. The validation set helped determine if the model was over or under fitting. The ideal number of epochs was Z as evidenced by ... I used an adam optimizer so that manually training the learning rate wasn't necessary.
+After the augmentation, I randomly shuffled the data set inside the generator. I used 20% of the data for validation.
+
+I used this training data for training the model. The validation set helped determine if the model was over or under fitting. The ideal number of epochs was 3-4 as the mean squared error only changed marginally after that. I used an adam optimizer so that manually changing the learning rate wasn't necessary.
